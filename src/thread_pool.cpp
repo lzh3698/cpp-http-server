@@ -22,11 +22,7 @@ private:
 
 public:
         thread_pool(int thread_numbers) : stop(false) {
-                std::cout << "construct function" << std::endl;
-                printf("constructor\n");
-                write(STDOUT_FILENO, "abc", 3);
                 while(thread_numbers--){
-                        std::cout << "construct" << std::endl;
                         threads.emplace_back([this](){
 
                                 while(true){

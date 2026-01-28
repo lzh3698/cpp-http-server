@@ -10,10 +10,12 @@
 #include "thread_pool.cpp"
 #include <string>
 #include <sys/stat.h>
+#include <memory>
 using namespace std;
 
 #define PORT 8080
 #define BUFFER_SIZE 1024 + 1
+#define THREAD_NUMS 5
 
 string get_file_type(const string &filename){
         int index = filename.rfind('.');
@@ -31,12 +33,12 @@ string get_file_type(const string &filename){
 void handle_http_request(int sock, string &message, string &route){
         cout << "Begin handle http request" << endl;
         int fd;
-        route = "/my_server/static" + route;
+        route = "/static" + route;
         if(route.find("..") != string::npos){
                 string s;
                 string error_info = "403 Forbidden";
                 s = s + "HTTP/1.1 403 Forbidden\r\n"
-                      + "Content-Type: text/html\r\n"
+                      + "Content-Type: " + get_file_type(route) + "\r\n"
                       + "Content-Length: " + to_string(error_info.size()) + "\r\n"
                       + "\r\n"
                       + error_info;
@@ -50,7 +52,7 @@ void handle_http_request(int sock, string &message, string &route){
                 string s;
                 string error_info = "404 Not Found\r\n";
                 s = s + "HTTP/1.1 404 Not Found\r\n"
-                      + "Content-Type: text/html\r\n"
+                      + "Content-Type: " + get_file_type(route) + "\r\n"
                       + "Content-Length: " + to_string(error_info.size()) + "\r\n"
                       + "\r\n"
                       + error_info;
@@ -73,16 +75,21 @@ void handle_http_request(int sock, string &message, string &route){
         + "Content-Length: " + to_string(size) + "\r\n"
         + "\r\n";
 
-        string content;
+        if(write(sock, response.c_str(), response.size()) != response.size()){
+                cerr << "Write error!" << endl;
+                return;
+        }
 
         int read_nums = 0;
         char buffer[BUFFER_SIZE] = {0};
         while((read_nums = read(fd, buffer, BUFFER_SIZE)) > 0){
-                buffer[read_nums] = '\0';
-                content += buffer;
+                if(write(sock, buffer, read_nums) != read_nums){
+                        cerr << "Write error!" << endl;
+                        return;
+                }
+
                 if(read_nums < BUFFER_SIZE){
                         break;
-                        return;
                 }
         }
 
@@ -90,13 +97,6 @@ void handle_http_request(int sock, string &message, string &route){
                 cerr << "HTTP read error!" << endl;
                 return;
         }
-
-        string to_send = response + content;
-        if(write(sock, to_send.c_str(), to_send.size()) == -1){
-                cerr << "Write error!" << endl;
-                return;
-        }
-
 }
 
 bool is_http_request(const string &message, string &route){
@@ -153,7 +153,7 @@ bool is_http_request(const string &message, string &route){
         return true;
 }
 
-void handle(int client_sock){
+void handle(shared_ptr<int> client_sock){
 
         char buffer[BUFFER_SIZE] = {0};
 
@@ -162,7 +162,7 @@ void handle(int client_sock){
         string accepted_message;
 
         while(true){
-                if((read_nums = read(client_sock, buffer, BUFFER_SIZE)) < 0){
+                if((read_nums = read(*client_sock, buffer, BUFFER_SIZE)) < 0){
                         cerr << "Read error!" << endl;
                         return;
                 }else{
@@ -180,18 +180,13 @@ void handle(int client_sock){
         string route;
 
         if(is_http_request(accepted_message, route)){
-                handle_http_request(client_sock, accepted_message, route);
+                handle_http_request(*client_sock, accepted_message, route);
         }
         else{
-                if(write(client_sock, buffer, read_nums) != read_nums){
+                if(write(*client_sock, buffer, read_nums) != read_nums){
                         cerr << "Write error!" << endl;
                         return;
                 }
-        }
-
-        if(close(client_sock) < 0){
-                cerr << "Close error!" << endl;
-                return;
         }
 
 }
@@ -219,20 +214,25 @@ int main(){
                 exit(-1);
         }
 
-        thread_pool th_pool(5);
+        thread_pool th_pool(THREAD_NUMS);
 
         while(true){
                 struct sockaddr_in acc_addr;
-                int new_sc;
                 const char *wrong = "Cannot link to server";
                 socklen_t addr_len = sizeof(acc_addr);
-                if((new_sc = accept(sc, (sockaddr*)&acc_addr, &addr_len)) == -1){
+                int sock = accept(sc, (sockaddr*)&acc_addr, &addr_len);
+                if(sock == -1){
                         cerr << "Accept error!" << endl;
                         continue;
                 }
+                shared_ptr<int> new_sc(new int(sock), [](int *sock){
+                        if(close(*sock) == -1){
+                                cerr << "Close error!" << endl;
+                        }
+                        delete sock;
+                });
 
                 th_pool.submit(handle, new_sc);
-                cerr << "main running" << endl;
         }
 
 
