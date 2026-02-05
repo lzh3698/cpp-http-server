@@ -1,13 +1,15 @@
+CXXFLAGS = -std=c++11 -I include -g -pthread
+
 src = $(wildcard src/*.cpp)
 obj = $(patsubst src/%.cpp, src/%.o, $(src))
 
 ALL : http_server
 
 http_server : $(obj)
-        g++ -std=c++11 $^ -o http_server -pthread
+        g++ $(CXXFLAGS) $^ -o http_server
 
-%.o : %.cpp
-        g++ -std=c++11 -c $< -o $@
+src/%.o : src/%.cpp
+        g++ $(CXXFLAGS) -c $< -o $@
 
 clean :
         rm -rf src/*.o
