@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #include <cstdlib>
 #include <cstring>
-#include "thread_pool.cpp"
+#include "thread_pool.h"
 #include <string>
 #include <sys/stat.h>
 #include <memory>
@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <error.h>
 #include <sys/sendfile.h>
+#include "logger.h"
 using namespace std;
 
 #define PORT 8080
@@ -89,8 +90,7 @@ void get_route(Connection &con){
         con.route = "/static/" + route;
 }
 
-void parse_http_request(Connection &con){
-        cout << "Begin parse http request" << endl;
+void parse_http_request(Connection &con, logger &loger){
 
         get_mean(con);
         get_route(con);
@@ -124,6 +124,7 @@ void parse_http_request(Connection &con){
                                 con.write_ready = true;
                         }
                         cout << "404 Not Found" << endl;
+                        loger.fail_open(con.route);
                         return;
                 }
 
@@ -143,12 +144,12 @@ void parse_http_request(Connection &con){
                 + "Content-Length: " + to_string(size) + "\r\n"
                 + "\r\n";
 
+                loger.client_active("GET", con.route, con.addr);
                 {
                         unique_lock<mutex> lock(con.mtx);
                         con.is_normal = true;
                         con.write_ready = true;
                 }
-
 
         }else{
                 return;
@@ -172,7 +173,7 @@ int get_body_len(string message){
 }
 
 int main(){
-
+        logger loger;
         int sc = socket(AF_INET, SOCK_STREAM, 0);
         if(sc == -1){
 
@@ -184,10 +185,19 @@ int main(){
         addr.sin_family = AF_INET;
         addr.sin_addr.s_addr = htonl(INADDR_ANY);
         addr.sin_port = htons(PORT);
+
+        int opt = 1;
+        if(setsockopt(sc, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0){
+                cerr << "Set sockopt failed!" << endl;
+                exit(-1);
+        }
+
         if(bind(sc, (sockaddr*)&addr, sizeof(addr)) == -1){
                 cerr << "Bind error!" << endl;
                 exit(-1);
         }
+
+        loger.server_start(PORT);
 
         if(listen(sc, 3) == -1){
                 cerr << "Listen error!" << endl;
@@ -226,8 +236,6 @@ int main(){
 
         while(true){
 
-                struct sockaddr_in acc_addr;
-                socklen_t addr_len = sizeof(acc_addr);
                 unique_ptr<epoll_event[]> evens(new epoll_event[EPOLL_NUMS]);
 
                 int wait_nums = 0;
@@ -242,6 +250,9 @@ int main(){
                                                 cerr << "Accept error!" << endl;
                                                 continue;
                                         }else{
+
+                                                loger.client_linked(client_sock, client_addr);
+
                                                 int flags = 0;
                                                 if((flags = fcntl(client_sock, F_GETFL)) == -1){
                                                         cerr << "Fcntl get error!" << endl;
@@ -260,7 +271,7 @@ int main(){
                                                         cerr << "Epoll ctl error!" << endl;
                                                         continue;
                                                 }
-                                                shared_ptr<Connection> new_con(new Connection(client_sock, client_addr, client_addr_len));
+                                                shared_ptr<Connection> new_con(new Connection(client_sock, client_addr, client_addr_len), [&loger, client_sock](Connection *con){ delete con; loger.client_closed(client_sock); });
                                                 cons.emplace(client_sock, new_con);
                                         }
                                 }else{
@@ -302,7 +313,7 @@ int main(){
                                                                         if(epoll_ctl(epfd, EPOLL_CTL_ADD, cur_fd, &write_epoll) == -1){
                                                                                 cerr << "Epoll_ctl add error!" << endl;
                                                                         }
-                                                                        th_pool.submit(parse_http_request, std::ref(to_deal));
+                                                                        th_pool.submit(parse_http_request, std::ref(to_deal), std::ref(loger));
 
                                                                         break;
                                                                 }
@@ -359,12 +370,12 @@ int main(){
                                                                 to_deal.offset += send_nums;
                                                         }else{
                                                                 if(to_deal.body_len == 0){
+                                                                        loger.server_active("200 OK", true, to_deal.offset);
                                                                         if(epoll_ctl(epfd, EPOLL_CTL_DEL, cur_fd, NULL) == -1){
 
                                                                                 cerr << "Epoll_ctl del error!" << endl;
                                                                         }
                                                                         cons.erase(cur_fd);
-
                                                                         continue;
 
                                                                 }else{
