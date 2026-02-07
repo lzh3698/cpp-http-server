@@ -31,7 +31,8 @@
   (默认监听8080端口)
   
 - **发送测试请求**  
-  curl -v http://localhost:8080/
+  curl -v http://localhost:8080/…（/static/目录中的文件）
+  （程序默认访问的静态文件路径为/static/）
 
 ## 性能关注点
 在开发环境（如：CentOS 7.9, 2核CPU）中，本项目关注并验证了以下性能关键设计：
