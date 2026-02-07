@@ -14,9 +14,9 @@
 
 class logger{
 private:
-        std::ofstream ofs;	// 文件输出流对象
+        std::ofstream ofs;      // 文件输出流对象
         std::unordered_map<int, std::chrono::system_clock::time_point> connect_time;	// 客户端描述符为key，连接的时间点为value
-        std::mutex mtx;		// 不同线程写入，需要锁
+        std::mutex mtx;	        // 不同线程写入，需要锁
 
         std::string get_cur_time();	// 按一定格式获取当前时间
 public:
