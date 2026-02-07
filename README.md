@@ -31,7 +31,7 @@
   (默认监听8080端口)
   
 - **发送测试请求**  
-  curl -v http://localhost:8080/…（/static/目录中的文件）
+  curl -v http://localhost:8080/…（/static/目录中的文件）  
   （程序默认访问的静态文件路径为/static/）
 
 ## 性能关注点
