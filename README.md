@@ -35,7 +35,7 @@
   （程序默认访问的静态文件目录为/static/）
 
 ## 性能关注点
-在开发环境（如：CentOS 7.9, 2核CPU）中，本项目关注并验证了以下性能关键设计：
+在开发环境 CentOS 7.9 中，本项目关注并验证了以下性能关键设计：
 
 计算与I/O分离：线程池隔离了阻塞的业务处理，保证事件循环的响应性。
 
@@ -66,15 +66,15 @@
 
 ## 项目结构
 ```
-cpp-http-server/               // 项目根目录  
-├── include/                   // 公共头文件  
-│   ├── logger.h               // 日志系统接口  
-│   └── thread_pool.h          // 线程池模板实现  
-├── src/                       // 源文件  
-│   ├── logger.cpp             // 日志系统实现  
-│   ├── thread_pool.cpp        // 线程池实现  
-│   └── http_server.cpp        // 服务器主逻辑 (epoll, HTTP解析等)  
-├── .ignore                    // 忽视文件  
-├── makefile                   // 构建脚本  
+cpp-http-server/               # 项目根目录  
+├── include/                   # 公共头文件  
+│   ├── logger.h               # 日志系统接口  
+│   └── thread_pool.h          # 线程池模板实现  
+├── src/                       # 源文件  
+│   ├── logger.cpp             # 日志系统实现  
+│   ├── thread_pool.cpp        # 线程池实现  
+│   └── http_server.cpp        # 服务器主逻辑 (epoll, HTTP解析等)  
+├── .ignore                    # 忽视文件  
+├── makefile                   # 构建脚本  
 └── http_server_log            // 运行时日志文件 (程序启动后自动生成)  
 ```
