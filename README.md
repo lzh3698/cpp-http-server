@@ -74,7 +74,7 @@ cpp-http-server/               # 项目根目录
 │   ├── logger.cpp             # 日志系统实现  
 │   ├── thread_pool.cpp        # 线程池实现  
 │   └── http_server.cpp        # 服务器主逻辑 (epoll, HTTP解析等)  
-├── .gitignore                    # 忽视文件  
+├── .gitignore                 # 忽视文件  
 ├── makefile                   # 构建脚本  
-└── http_server_log            // 运行时日志文件 (程序启动后自动生成)  
+└── http_server_log            # 运行时日志文件 (程序启动后自动生成)  
 ```
