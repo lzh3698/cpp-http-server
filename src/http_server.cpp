@@ -133,15 +133,16 @@ void parse_http_request(Connection &con, logger &loger){
                               + "Content-Length: " + to_string(sizeof(error_info )) + "\r\n"
                               + "\r\n"
                               + error_info;
-                        {
-	                			// 加锁设置write_ready，is_normal初始化为false，此处不需要设置
-                                unique_lock<mutex> lock(con.mtx);
-                                con.write_ready = true;
-                        }
+                        
                         cout << "404 Not Found" << endl;
 		
 	        			// 打开文件失败写入日志
                         loger.fail_open(con.route);
+					    {
+	                			// 加锁设置write_ready，is_normal初始化为false，此处不需要设置
+                                unique_lock<mutex> lock(con.mtx);
+                                con.write_ready = true;
+					    }
                         return;
                 }
 	
